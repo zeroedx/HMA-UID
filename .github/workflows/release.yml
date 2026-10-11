@@ -1,0 +1,61 @@
+name: Build and publish module
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Android NDK 27.3.13750724
+        shell: pwsh
+        run: |
+          $sdkmanager = Get-ChildItem -Path $env:ANDROID_HOME -Filter sdkmanager.bat -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $sdkmanager) {
+            throw 'Android sdkmanager.bat was not found on the runner.'
+          }
+          & $sdkmanager.FullName --licenses | Out-Null
+          & $sdkmanager.FullName 'ndk;27.3.13750724'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build arm64-v8a module
+        shell: pwsh
+        run: python tools/uid-seccomp-module/build.py --module-only
+
+      - name: Verify package
+        shell: pwsh
+        run: |
+          $package = 'build/0.2.6/cq-uid-seccomp-0.2.6.zip'
+          if (-not (Test-Path $package)) { throw "Missing $package" }
+          Get-FileHash $package -Algorithm SHA256
+          Get-Content 'build/0.2.6/cq-uid-seccomp-0.2.6.zip.sha256'
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: UID Filter ${{ github.ref_name }}
+          generate_release_notes: false
+          body: |
+            UID Filter arm64-v8a 模块。
+
+            - 支持 Android 13+、Zygisk API 5
+            - 过滤指定应用的 `getpriority(PRIO_USER)` 调用
+            - 包含中英文 WebUI
+          files: |
+            build/0.2.6/cq-uid-seccomp-0.2.6.zip
+            build/0.2.6/cq-uid-seccomp-0.2.6.zip.sha256

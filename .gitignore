@@ -2,6 +2,9 @@
 /*
 !/.gitignore
 !/.gitattributes
+!/.github/
+!/.github/workflows/
+!/.github/workflows/release.yml
 !/LICENSE
 !/README.md
 !/third_party/
