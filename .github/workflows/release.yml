@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to publish (vX.Y.Z). Required for manual runs.'
+        required: true
 
 permissions:
   contents: write
@@ -20,6 +24,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      # A Release must come from a version tag. A manual run reports the branch
+      # in github.ref_name, so refuse to treat a branch name as a tag.
+      - name: Resolve release tag
+        shell: pwsh
+        run: |
+          $tag = python tools/uid-seccomp-module/release_tag.py "${{ github.ref }}" "${{ github.ref_name }}" "${{ inputs.tag }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not $tag) { throw 'Could not resolve a release tag.' }
+          "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install Android NDK 27.3.13750724
         shell: pwsh
@@ -39,16 +53,19 @@ jobs:
       - name: Verify package
         shell: pwsh
         run: |
-          $package = 'build/0.2.6/cq-uid-seccomp-0.2.6.zip'
+          $version = (Select-String -Path 'tools/uid-seccomp-module/build.py' -Pattern "^VERSION = '(.+)'$").Matches.Groups[1].Value
+          if (-not $version) { throw 'Could not read VERSION from build.py.' }
+          $package = "build/$version/cq-uid-seccomp-$version.zip"
           if (-not (Test-Path $package)) { throw "Missing $package" }
           Get-FileHash $package -Algorithm SHA256
-          Get-Content 'build/0.2.6/cq-uid-seccomp-0.2.6.zip.sha256'
+          Get-Content "$package.sha256"
+          "PACKAGE=$package" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: UID Filter ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: UID Filter ${{ env.RELEASE_TAG }}
           generate_release_notes: false
           body: |
             UID Filter arm64-v8a 模块。
@@ -57,5 +74,5 @@ jobs:
             - 过滤指定应用的 `getpriority(PRIO_USER)` 调用
             - 包含中英文 WebUI
           files: |
-            build/0.2.6/cq-uid-seccomp-0.2.6.zip
-            build/0.2.6/cq-uid-seccomp-0.2.6.zip.sha256
+            ${{ env.PACKAGE }}
+            ${{ env.PACKAGE }}.sha256

@@ -10,6 +10,15 @@ PENDING=/data/adb/modules_update/$ID
 mkdir -p "$STORE"
 chmod 700 "$STORE"
 
+# module.prop is the single source of truth for the module version; the panel
+# must never hardcode it. Fall back to the active module dir if needed.
+module_version() {
+    version=$(sed -n 's/^version=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)
+    [ -n "$version" ] || version=$(sed -n 's/^version=//p' "$CURRENT/module.prop" 2>/dev/null | head -n 1)
+    [ -n "$version" ] || version=unknown
+    printf '%s' "$version"
+}
+
 validate() {
     [ "$(wc -c < "$1")" -le 32768 ] || return 1
     awk 'NR==1 {if ($0!="enabled=0" && $0!="enabled=1") exit 1; next}
@@ -41,7 +50,7 @@ status() {
     enabled=false; [ "$(head -n 1 "$STORE/config")" = enabled=1 ] && enabled=true
     disabled=false; [ ! -f "$CURRENT/disable" ] || disabled=true
     pending=false; [ ! -f "$CURRENT/update" ] || pending=true
-    printf '{"enabled":%s,"moduleDisabled":%s,"pendingUpdate":%s,"version":"0.2.4","packages":[' "$enabled" "$disabled" "$pending"
+    printf '{"enabled":%s,"moduleDisabled":%s,"pendingUpdate":%s,"version":"%s","packages":[' "$enabled" "$disabled" "$pending" "$(module_version)"
     comma=''
     tail -n +2 "$STORE/config" | while IFS= read -r package; do
         printf '%s"%s"' "$comma" "$package"; comma=,
