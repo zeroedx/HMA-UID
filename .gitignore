@@ -29,6 +29,8 @@
 !/tools/uid-seccomp-module/filter.h
 !/tools/uid-seccomp-module/policy.h
 !/tools/uid-seccomp-module/exports.map
+!/tools/uid-seccomp-module/release_tag.py
+!/tools/uid-seccomp-module/tests/
 !/tools/uid-seccomp-module/panel/
 /tools/uid-seccomp-module/panel/*
 !/tools/uid-seccomp-module/panel/action.sh

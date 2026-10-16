@@ -59,7 +59,8 @@
   }
   function accept(state) {
     if (!Array.isArray(state.packages) || !state.packages.every(validPackage) || typeof state.enabled !== 'boolean') throw new Error(t('invalidConfig'));
-    saved = state; packages = [...new Set(state.packages)]; $('enabled').checked = state.enabled; $('version').textContent = state.version; render();
+    saved = state; packages = [...new Set(state.packages)]; $('enabled').checked = state.enabled;
+    $('version').textContent = state.version ?? ''; render();
   }
   async function load() {
     if (busy) return;

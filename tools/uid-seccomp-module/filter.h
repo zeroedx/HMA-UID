@@ -14,8 +14,6 @@
 #include "policy.h"
 
 namespace uid_filter {
-struct Result { long result; int error; int nnp_before; size_t instructions; };
-
 inline std::vector<sock_filter> make_rule(uint32_t self, const std::vector<uint32_t>& uids, bool other_apps) {
     std::vector<sock_filter> code;
     auto load = [&](uint32_t offset) { code.push_back(BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offset)); };
@@ -46,6 +44,12 @@ inline std::vector<sock_filter> make_rule(uint32_t self, const std::vector<uint3
 
 // Redirect only the platform policy's ALLOW leaves. Denials, architecture
 // checks and all existing relative jumps retain their original behavior.
+//
+// The merged program must never exceed the platform policy's instruction
+// budget, in either cBPF or converted eBPF accounting. If the platform policy
+// has an unfamiliar shape, or the merge cannot preserve the budget, this fails
+// and the caller must leave the platform policy untouched. We never install a
+// growing filter and never weaken an existing policy just to apply a rule.
 inline bool merge(const sock_fprog& platform, uint32_t self, std::vector<sock_filter>& output) {
     if (!platform.filter || !platform.len || self % 100000 < 10000 || self % 100000 > 19999) return false;
     const auto rule = make_rule(self, {}, true);
@@ -59,35 +63,6 @@ inline bool merge(const sock_fprog& platform, uint32_t self, std::vector<sock_fi
         has_allow |= op.k == SECCOMP_RET_ALLOW;
     }
     if (!has_allow) return false;
-    if (detail::merge_with_budget(platform, rule, output)) return true;
-    output.assign(platform.filter, platform.filter + platform.len);
-    for (size_t i = 0; i < platform.len; ++i) {
-        if (output[i].code == (BPF_RET | BPF_K) && output[i].k == SECCOMP_RET_ALLOW)
-            output[i] = BPF_STMT(BPF_JMP | BPF_JA, uint32_t(platform.len - i - 1));
-    }
-    output.insert(output.end(), rule.begin(), rule.end());
-    return true;
-}
-
-// Compatibility fallback for loaders that cannot intercept the platform policy.
-inline Result install(std::vector<uint32_t> uids, bool other_apps = false) {
-    const uint32_t self = getuid();
-    if ((!other_apps && uids.empty()) || uids.size() > 256) return {-1, EINVAL, -1, 0};
-    for (auto uid : uids) {
-        if (uid == self || uid % 100000 < 10000 || uid % 100000 > 19999
-                || uid / 100000 != self / 100000) return {-1, EINVAL, -1, 0};
-    }
-    std::sort(uids.begin(), uids.end());
-    uids.erase(std::unique(uids.begin(), uids.end()), uids.end());
-    auto code = make_rule(self, uids, other_apps);
-    const int nnp = prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0);
-    if (nnp < 0) return {-1, errno, nnp, code.size()};
-    if (!nnp && prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) return {-1, errno, nnp, code.size()};
-    sock_fprog program{static_cast<unsigned short>(code.size()), code.data()};
-    errno = 0;
-    const long result = syscall(__NR_seccomp, SECCOMP_SET_MODE_FILTER,
-            SECCOMP_FILTER_FLAG_TSYNC, &program);
-    // A positive TID is also TSYNC failure. Never call it an installed filter.
-    return {result, result < 0 ? errno : 0, nnp, code.size()};
+    return detail::merge_with_budget(platform, rule, output);
 }
 }

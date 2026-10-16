@@ -17,28 +17,30 @@ class UidSeccomp final : public zygisk::ModuleBase {
     int expected_uid_ = -1;
     Prctl original_prctl_ = nullptr;
     struct stat runtime_{};
+    bool registered_ = false;
     bool hook_active_ = false;
     bool merged_ = false;
 
     static int intercept_prctl(int option, unsigned long second, unsigned long third,
                                unsigned long fourth, unsigned long fifth) {
-        auto& self = *current_;
-        if (option == PR_SET_SECCOMP && second == SECCOMP_MODE_FILTER && third && !self.merged_) {
+        UidSeccomp* self = current_;
+        if (!self || !self->original_prctl_) return -1;
+        if (option == PR_SET_SECCOMP && second == SECCOMP_MODE_FILTER && third && !self->merged_) {
             const int saved_errno = errno;
             try {
                 std::vector<sock_filter> code;
-                if (uid_filter::merge(*reinterpret_cast<const sock_fprog*>(third), uint32_t(self.expected_uid_), code)) {
+                if (uid_filter::merge(*reinterpret_cast<const sock_fprog*>(third), uint32_t(self->expected_uid_), code)) {
                     sock_fprog program{static_cast<unsigned short>(code.size()), code.data()};
-                    const int result = self.original_prctl_(option, second,
+                    const int result = self->original_prctl_(option, second,
                         reinterpret_cast<unsigned long>(&program), fourth, fifth);
-                    if (result == 0) { self.merged_ = true; return result; }
+                    if (result == 0) { self->merged_ = true; return result; }
                 }
             } catch (...) {
                 // Never prevent Android from installing its own sandbox policy.
             }
             errno = saved_errno;
         }
-        return self.original_prctl_(option, second, third, fourth, fifth);
+        return self->original_prctl_(option, second, third, fourth, fifth);
     }
 
     void prepare_platform_filter() {
@@ -50,28 +52,35 @@ class UidSeccomp final : public zygisk::ModuleBase {
         current_ = this;
         api_->pltHookRegister(runtime_.st_dev, runtime_.st_ino, "prctl",
             reinterpret_cast<void*>(intercept_prctl), reinterpret_cast<void**>(&original_prctl_));
+        registered_ = true;
         const bool committed = api_->pltHookCommit();
-        // A failed commit may have patched some entries. Retain the library
-        // until the original function has been put back in that case too.
+        // The provider may apply some entries even when commit reports failure,
+        // so retention follows the resolved original pointer, not the result.
         hook_active_ = original_prctl_ != nullptr;
-        if (!committed && !hook_active_) current_ = nullptr;
+        // Drop the interception callback whenever it is not provably in place:
+        // either the commit failed, or no original pointer was resolved. Leaving
+        // current_ set would expose a dangling pointer after this library
+        // unloads, and the callback would run with no original to fall back to.
+        if (!committed || !hook_active_) current_ = nullptr;
     }
 
     bool restore_platform_filter() {
-        if (!hook_active_) return true;
+        if (!registered_) return !hook_active_;
         void* displaced = nullptr;
         api_->pltHookRegister(runtime_.st_dev, runtime_.st_ino, "prctl",
             reinterpret_cast<void*>(original_prctl_), &displaced);
-        if (!api_->pltHookCommit()) return false;
+        const bool committed = api_->pltHookCommit();
         if (displaced != reinterpret_cast<void*>(intercept_prctl)) {
-            // Another module may have chained our callback. Preserve its hook
-            // and keep this library mapped so its saved pointer stays valid.
+            // Another module may have chained our callback. Preserve its hook and
+            // keep this library mapped so its saved pointer stays valid. Never
+            // drop current_ here: our callback remains reachable on that chain.
             if (displaced) {
                 api_->pltHookRegister(runtime_.st_dev, runtime_.st_ino, "prctl", displaced, nullptr);
                 api_->pltHookCommit();
             }
             return false;
         }
+        if (!committed) return false;
         hook_active_ = false;
         current_ = nullptr;
         return true;
@@ -119,8 +128,9 @@ public:
     }
     void postAppSpecialize(const zygisk::AppSpecializeArgs*) override {
         const bool restored = restore_platform_filter();
-        if (active_ && getuid() == uint32_t(expected_uid_) && !merged_) uid_filter::install({}, true);
-        // No callback may reference this library when Zygisk unloads it.
+        // No callback may reference this library when Zygisk unloads it. If the
+        // hook could not be cleanly removed (chained by another module), keep the
+        // library mapped so our callback stays valid instead of dangling.
         if (restored) api_->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
     }
 };
