@@ -73,6 +73,9 @@ jobs:
             - 支持 Android 13+、Zygisk API 5
             - 过滤指定应用的 `getpriority(PRIO_USER)` 调用
             - 包含中英文 WebUI
+
+            > ⚠️ 安装前请先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6。
+            > 本版本更换了模块 ID，不支持与旧版共存，请勿同时安装新旧版本。
           files: |
             ${{ env.PACKAGE }}
             ${{ env.PACKAGE }}.sha256

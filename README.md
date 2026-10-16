@@ -19,14 +19,15 @@ HMA++ 是一个 Zygisk 模块，通过过滤指定应用进程的 `getpriority(P
 - 架构：arm64（`arm64-v8a`），安装脚本会拒绝非 arm64 设备。
 - 系统：Android 13 及以上（API 33+）。
 - 提供程序：Zygisk API 5；配合 KernelSU、Magisk 等支持 Zygisk 的模块管理器使用。
-- 与旧版共存：本版本使用新的模块 ID（`hma_plus_plus`），与 0.2.6 及更早版本（`cq_uid_seccomp`）相互独立，可同时安装而互不覆盖。两者的配置分别保存在各自的数据目录中。
+- 升级方式：本版本更换了模块 ID，**不支持与旧版共存**。安装 HMA++ 0.2.7 前，请先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6，不要同时保留新旧版本。
 
 ## 安装
 
-1. 下载 `hma-plus-plus-0.2.7.zip`（或对应版本）及其 `.zip.sha256` 校验文件。
-2. 在支持 Zygisk 的模块管理器中安装该 ZIP。
-3. 重启设备。
-4. 打开模块 WebUI，启用过滤并添加需要生效的包名，保存并应用。
+1. **先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6**（若已安装），确认旧模块已从列表中移除。
+2. 下载 `hma-plus-plus-0.2.7.zip`（或对应版本）及其 `.zip.sha256` 校验文件。
+3. 在支持 Zygisk 的模块管理器中安装该 ZIP。
+4. 重启设备。
+5. 打开模块 WebUI，启用过滤并添加需要生效的包名，保存并应用。
 
 首次安装或更新原生组件后需要重启设备。升级时模块会在安装阶段校验包内文件的 SHA-256，校验失败会中止安装。
 
@@ -68,7 +69,7 @@ sh tools/uid-seccomp-module/tests/run_tests.sh
 
 ## 版本记录
 
-- 0.2.7：模块更名为 HMA++，作者 zeroedx；使用新的模块 ID `hma_plus_plus`，可与 0.2.6 共存而互不覆盖；合并审计修复：seccomp 合并改为预算失败即放弃、Provider 回调指针生命周期加固、版本与 Release 标签来源统一。
+- 0.2.7：模块更名为 HMA++，作者 zeroedx；模块 ID 更换为 `hma_plus_plus`（旧版为 `cq_uid_seccomp`），**安装前需先卸载旧版 HMA-UIDfake 0.2.6，新旧版本不可共存**；合并审计修复：seccomp 合并改为预算失败即放弃、Provider 回调指针生命周期加固、版本与 Release 标签来源统一。
 - 0.2.6：析构回调改为模块内部登记和清理，避免在 libc 的退出回调表中留下登记痕迹；发布 SO 移除 `atexit` 符号字符串，仅导出 Zygisk 入口。
 - 0.2.5：在支持的平台策略上，保持合并前的 seccomp 指令预算，修复应用可安装过滤规则的额度差异。
 - 0.2.4：合并系统 seccomp 策略时保持原有的 `NoNewPrivs` 状态和过滤器数量，移除模块启动日志。
