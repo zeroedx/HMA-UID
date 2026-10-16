@@ -54,6 +54,21 @@ def main():
     check('release.yml does not use a branch ref as the release tag',
           'tag_name: ${{ github.ref_name }}' not in workflow)
 
+    build = BUILD.read_text(encoding='utf-8')
+    control = (PANEL / 'control.sh').read_text(encoding='utf-8')
+    check('build.py generates the hma_plus_plus module id',
+          "id=hma_plus_plus" in build)
+    check('control.sh uses the same module id as build.py',
+          'ID=hma_plus_plus' in control)
+    check('control.sh stores config under the module id',
+          'STORE=/data/adb/hma_plus_plus' in control)
+    check('module name is HMA++',
+          "name=HMA++" in build)
+    check('module author is zeroedx',
+          "author=zeroedx" in build)
+    check('build.py names the ZIP after the module',
+          'hma-plus-plus-{VERSION}' in build)
+
     print(f"\n{'VERSION TESTS FAILED' if failures else 'ALL VERSION TESTS PASSED'} ({failures} failures)")
     return 1 if failures else 0
 

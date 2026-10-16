@@ -55,7 +55,7 @@ jobs:
         run: |
           $version = (Select-String -Path 'tools/uid-seccomp-module/build.py' -Pattern "^VERSION = '(.+)'$").Matches.Groups[1].Value
           if (-not $version) { throw 'Could not read VERSION from build.py.' }
-          $package = "build/$version/cq-uid-seccomp-$version.zip"
+          $package = "build/$version/hma-plus-plus-$version.zip"
           if (-not (Test-Path $package)) { throw "Missing $package" }
           Get-FileHash $package -Algorithm SHA256
           Get-Content "$package.sha256"
@@ -65,14 +65,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          name: UID Filter ${{ env.RELEASE_TAG }}
+          name: HMA++ ${{ env.RELEASE_TAG }}
           generate_release_notes: false
           body: |
-            UID Filter arm64-v8a 模块。
+            HMA++ arm64-v8a 模块。
 
             - 支持 Android 13+、Zygisk API 5
             - 过滤指定应用的 `getpriority(PRIO_USER)` 调用
             - 包含中英文 WebUI
+
+            > ⚠️ 安装前请先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6。
+            > 本版本更换了模块 ID，不支持与旧版共存，请勿同时安装新旧版本。
           files: |
             ${{ env.PACKAGE }}
             ${{ env.PACKAGE }}.sha256

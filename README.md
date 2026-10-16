@@ -1,18 +1,50 @@
-# UID Filter / UID 过滤
+# HMA++
 
-作者：泷泽。当前版本：0.2.6。
+作者：zeroedx。当前版本：0.2.7。
 
-通过过滤指定包的`getpriority(PRIO_USER)`  做到规避检测。
+HMA++ 是一个 Zygisk 模块，通过过滤指定应用进程的 `getpriority(PRIO_USER)` 调用，规避“内核已分配 UID 但查询结果不存在”这一检测点。
 
-模块面向 arm64、Android 13+、Zygisk API 5，包含中英文 WebUI。过滤仅作用于配置选中的普通应用进程；默认包名为 `com.chunqiunativecheck` 和 `com.chunqiu.appvisibilitydemo`。
+过滤仅作用于配置选中的普通应用进程，默认包名为 `com.chunqiunativecheck` 和 `com.chunqiu.appvisibilitydemo`。模块面向 arm64、Android 13+（API 33）、Zygisk API 5，内置中英文 WebUI。
 
-## Windows 构建
+## 功能
+
+- 对选中的普通应用进程过滤 `getpriority(PRIO_USER)`，规避 UID 分配相关检测。
+- 在支持的平台 seccomp 策略上保持原有指令预算进行合并；结构不匹配或无法保持预算时放弃合并，绝不放大或削弱系统策略。
+- 中英文 WebUI：开关过滤、添加 / 移除生效包名、保存并应用配置。
+- 保存并应用只停止配置发生变化的目标应用，重新打开后生效；不清除应用数据。
+- 兼容 KernelSU 的 WebUI 打开方式（`me.weishu.kernelsu`）。
+
+## 兼容性
+
+- 架构：arm64（`arm64-v8a`），安装脚本会拒绝非 arm64 设备。
+- 系统：Android 13 及以上（API 33+）。
+- 提供程序：Zygisk API 5；配合 KernelSU、Magisk 等支持 Zygisk 的模块管理器使用。
+- 升级方式：本版本更换了模块 ID，**不支持与旧版共存**。安装 HMA++ 0.2.7 前，请先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6，不要同时保留新旧版本。
+
+## 安装
+
+1. **先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6**（若已安装），确认旧模块已从列表中移除。
+2. 下载 `hma-plus-plus-0.2.7.zip`（或对应版本）及其 `.zip.sha256` 校验文件。
+3. 在支持 Zygisk 的模块管理器中安装该 ZIP。
+4. 重启设备。
+5. 打开模块 WebUI，启用过滤并添加需要生效的包名，保存并应用。
+
+首次安装或更新原生组件后需要重启设备。升级时模块会在安装阶段校验包内文件的 SHA-256，校验失败会中止安装。
+
+## 使用说明
+
+- 在 WebUI 中打开过滤开关，或从列表中添加 / 移除包名；改动后点击“保存并应用”。
+- “保存并应用”只会停止配置发生变化的目标应用，重新打开后生效。列表之外的应用不受影响。
+- 配置首行为 `enabled=1` 或 `enabled=0`，随后每行一个完整包名，最多 128 项。
+- 应用数据不会被清除；关闭过滤后，选中的应用即恢复原状。
+
+## 构建
 
 需要 Python 3.10+ 和 Android NDK `27.3.13750724`。默认从 `%LOCALAPPDATA%/Android/Sdk` 查找 SDK；可用 `ANDROID_SDK_ROOT` / `ANDROID_HOME` 指定 SDK，或用 `ANDROID_NDK_HOME` 直接指定 NDK 根目录。
 
 ```powershell
-git clone https://github.com/longze777/UID-.git
-Set-Location UID-
+git clone https://github.com/zeroedx/HMA-UIDfake.git
+Set-Location HMA-UIDfake
 python tools/uid-seccomp-module/build.py --module-only
 ```
 
@@ -20,28 +52,34 @@ python tools/uid-seccomp-module/build.py --module-only
 
 输出文件：
 
-- `build/0.2.6/cq-uid-seccomp-0.2.6.zip`
-- `build/0.2.6/cq-uid-seccomp-0.2.6.zip.sha256`
+- `build/0.2.7/hma-plus-plus-0.2.7.zip`
+- `build/0.2.7/hma-plus-plus-0.2.7.zip.sha256`
 
-可用 `--output <目录>` 指定输出目录，或用 `--config <文件>` 指定默认配置。配置首行为 `enabled=1` 或 `enabled=0`，随后每行一个完整包名。省略 `--module-only` 同样只构建模块。
+可用 `--output <目录>` 指定输出目录，或用 `--config <文件>` 指定默认配置。省略 `--module-only` 同样只构建模块。
 
-## 安装与配置
+## 测试
 
-使用兼容的模块管理器和 Zygisk 提供程序安装 ZIP，重启后打开模块 WebUI。面板支持开关过滤、添加和移除包名，以及保存并应用配置。配置切换会停止过滤状态发生变化的目标应用，重新打开后生效；不会清除应用数据。
+主机侧测试只需要 C++17 编译器和 Python 3，不构建 Android 模块，也不需要 NDK：
 
-当前操作按钮适配 KernelSU（`me.weishu.kernelsu`）。
+```sh
+sh tools/uid-seccomp-module/tests/run_tests.sh
+```
 
-0.2.6 修复：析构回调改为模块内部登记和清理，避免在 libc 的退出回调表中留下登记痕迹；发布 SO 移除 `atexit` 符号字符串，仅导出 Zygisk 入口。
+覆盖版本单一来源、Release 标签校验、seccomp 合并的预算与结构处理、模块生命周期回调安全等。
 
-0.2.5 修复：在支持的平台策略上，保持合并前的 seccomp 指令预算，修复应用可安装过滤规则的额度差异。
+## 版本记录
 
-0.2.4 修复：合并系统 seccomp 策略时保持原有的 `NoNewPrivs` 状态和过滤器数量，移除模块启动日志。
+- 0.2.7：模块更名为 HMA++，作者 zeroedx；模块 ID 更换为 `hma_plus_plus`（旧版为 `cq_uid_seccomp`），**安装前需先卸载旧版 HMA-UIDfake 0.2.6，新旧版本不可共存**；合并审计修复：seccomp 合并改为预算失败即放弃、Provider 回调指针生命周期加固、版本与 Release 标签来源统一。
+- 0.2.6：析构回调改为模块内部登记和清理，避免在 libc 的退出回调表中留下登记痕迹；发布 SO 移除 `atexit` 符号字符串，仅导出 Zygisk 入口。
+- 0.2.5：在支持的平台策略上，保持合并前的 seccomp 指令预算，修复应用可安装过滤规则的额度差异。
+- 0.2.4：合并系统 seccomp 策略时保持原有的 `NoNewPrivs` 状态和过滤器数量，移除模块启动日志。
 
 ## 源码
 
 - `tools/uid-seccomp-module/module.cpp`、`filter.h`、`policy.h`：原生模块。
 - `tools/uid-seccomp-module/panel/`：安装、配置脚本及 WebUI 资源。
 - `tools/uid-seccomp-module/build.py`：编译与 ZIP 打包。
+- `tools/uid-seccomp-module/tests/`：主机侧回归测试。
 - `third_party/zygisk/`：原始头文件、许可声明和来源校验信息。
 - `third_party/local_cxa/`：本地析构回调实现，改编自 [5ec1cff/local_cxa_atexit_finalize_impl](https://github.com/5ec1cff/local_cxa_atexit_finalize_impl)。
 

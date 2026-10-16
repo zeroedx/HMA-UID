@@ -8,12 +8,12 @@ SDK = Path(os.environ.get('ANDROID_SDK_ROOT') or os.environ.get('ANDROID_HOME') 
 NDK = Path(os.environ.get('ANDROID_NDK_HOME') or str(SDK / 'ndk/27.3.13750724')) / 'toolchains/llvm/prebuilt/windows-x86_64'
 HEADER = ROOT / 'third_party/zygisk/zygisk.hpp'
 HEADER_SHA = 'f8d55e8b4f89d418c5941afe62ce6a09ddec1f4afd9a1b0a01eb40a93310dd28'
-VERSION = '0.2.6'
-VERSION_CODE = 8
+VERSION = '0.2.7'
+VERSION_CODE = 9
 DEFAULT_OUTPUT = ROOT / 'build' / VERSION
 
 def main():
-    parser = argparse.ArgumentParser(description='Build the UID Filter Zygisk module ZIP.')
+    parser = argparse.ArgumentParser(description='Build the HMA++ Zygisk module ZIP.')
     parser.add_argument('--config', type=Path)
     parser.add_argument('--module-only', action='store_true', help='Accepted for compatibility; only the module is built.')
     parser.add_argument('--output', type=Path, default=DEFAULT_OUTPUT)
@@ -40,7 +40,7 @@ def main():
     assert '__cxa_atexit' not in symbols and '__cxa_finalize' not in symbols
     assert 'zygisk_module_entry' in symbols
     assert b'atexit' not in library.read_bytes(), 'Unexpected exit-handler symbol strings in release library'
-    (build / 'module/module.prop').write_text(f'id=cq_uid_seccomp\nname=UID 过滤\nversion={VERSION}\nversionCode={VERSION_CODE}\nauthor=泷泽\ndescription=通过过滤指定包的`getpriority(PRIO_USER)`  做到规避检测\n', encoding='utf-8', newline='\n')
+    (build / 'module/module.prop').write_text(f'id=hma_plus_plus\nname=HMA++\nversion={VERSION}\nversionCode={VERSION_CODE}\nauthor=zeroedx\ndescription=通过过滤指定包的`getpriority(PRIO_USER)`  做到规避检测\n', encoding='utf-8', newline='\n')
     (build / 'module/skip_mount').write_bytes(b'')
     for path in (HERE / 'panel').rglob('*'):
         if path.is_file():
@@ -58,10 +58,10 @@ def main():
     (build / 'module/SHA256SUMS').write_text(''.join(
         hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.relative_to(build / 'module').as_posix() + '\n'
         for path in module_files), encoding='ascii', newline='\n')
-    with zipfile.ZipFile(build / f'cq-uid-seccomp-{VERSION}.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+    with zipfile.ZipFile(build / f'hma-plus-plus-{VERSION}.zip', 'w', zipfile.ZIP_DEFLATED) as z:
         for path in sorted((build / 'module').rglob('*')):
             if path.is_file(): z.write(path, path.relative_to(build / 'module').as_posix())
-    module_artifacts = [build / f'cq-uid-seccomp-{VERSION}.zip', build / 'module/zygisk/arm64-v8a.so']
+    module_artifacts = [build / f'hma-plus-plus-{VERSION}.zip', build / 'module/zygisk/arm64-v8a.so']
     package = module_artifacts[0]
     package.with_suffix('.zip.sha256').write_text(
         hashlib.sha256(package.read_bytes()).hexdigest() + '  ' + package.name + '\n',

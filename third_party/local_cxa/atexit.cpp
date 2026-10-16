@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  */
 
-// Adapted for UID Filter by 泷泽, 2026-10-10, from 5ec1cff's
+// Adapted for HMA++ by zeroedx, 2026-10-10, from 5ec1cff's
 // local_cxa_atexit_finalize_impl, commit b269136606d6f230089fbf47a0b219f7f2ccef3c.
 // Changes: handle allocation failure, retain DSO identity, remove each entry
 // before invoking it, and support repeated/reentrant finalization safely.
