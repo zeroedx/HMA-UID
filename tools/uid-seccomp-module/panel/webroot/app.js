@@ -1,7 +1,7 @@
 (() => {
   'use strict';
-  const { lang, t } = window.CQUidI18n;
-  const SCRIPT = '/data/adb/modules/cq_uid_seccomp/control.sh';
+  const { lang, t } = window.HmaPlusPlusI18n;
+  const SCRIPT = '/data/adb/modules/hma_plus_plus/control.sh';
   const builtins = new Set([
     'com.chunqiunativecheck',
     'com.chunqiu.appvisibilitydemo'
@@ -15,14 +15,14 @@
   function command(args) {
     return new Promise((resolve, reject) => {
       if (!window.ksu || typeof window.ksu.exec !== 'function') return reject(new Error(t('missingBridge')));
-      const name = 'cqUidCallback' + (++serial);
+      const name = 'hmaPlusPlusCallback' + (++serial);
       const timer = setTimeout(() => { delete window[name]; reject(new Error(t('timeout'))); }, 15000);
       window[name] = (code, stdout, stderr) => {
         clearTimeout(timer); delete window[name];
         if (code !== 0) return reject(new Error((stderr || stdout || t('operationFailed')).trim()));
         try { resolve(JSON.parse(stdout)); } catch { reject(new Error(t('invalidResponse'))); }
       };
-      try { window.ksu.exec('CQ_LANG=' + lang + ' sh ' + SCRIPT + ' ' + args, '{}', name); }
+      try { window.ksu.exec('HMA_LANG=' + lang + ' sh ' + SCRIPT + ' ' + args, '{}', name); }
       catch (error) { clearTimeout(timer); delete window[name]; reject(error); }
     });
   }

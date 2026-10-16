@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Host-side test runner for the UID Filter module. It needs only a C++17
+# Host-side test runner for the HMA++ module. It needs only a C++17
 # compiler and Python 3; it does not build the Android module and does not
 # require the NDK. Run from anywhere:
 #

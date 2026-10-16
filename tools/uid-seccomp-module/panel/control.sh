@@ -2,11 +2,11 @@
 set -eu
 MODDIR=${0%/*}
 . "$MODDIR/locale.sh"
-ID=cq_uid_seccomp
-STORE=/data/adb/cq_uid_seccomp
+ID=hma_plus_plus
+STORE=/data/adb/hma_plus_plus
 CURRENT=/data/adb/modules/$ID
 PENDING=/data/adb/modules_update/$ID
-[ "$(id -u)" = 0 ] || { cq_message '需要模块管理器的 Root 接口' 'The module manager Root interface is required' >&2; exit 1; }
+[ "$(id -u)" = 0 ] || { hma_message '需要模块管理器的 Root 接口' 'The module manager Root interface is required' >&2; exit 1; }
 mkdir -p "$STORE"
 chmod 700 "$STORE"
 
@@ -43,7 +43,7 @@ init_config() {
         cp "$MODDIR/defaults" "$STORE/config"
         chmod 600 "$STORE/config"
     fi
-    validate "$STORE/config" || { cq_message '已保存配置无效；未覆盖原文件' 'The saved configuration is invalid; the original file has been preserved' >&2; exit 1; }
+    validate "$STORE/config" || { hma_message '已保存配置无效；未覆盖原文件' 'The saved configuration is invalid; the original file has been preserved' >&2; exit 1; }
     sync_config
 }
 status() {
@@ -64,12 +64,12 @@ case "${1:-status}" in
     save)
         init_config
         encoded=${2:-}
-        [ "${#encoded}" -le 44000 ] || { cq_message '配置过长' 'The configuration is too large' >&2; exit 1; }
-        case "$encoded" in ''|*[!A-Za-z0-9+/=]*) cq_message '配置编码无效' 'Invalid configuration encoding' >&2; exit 1;; esac
+        [ "${#encoded}" -le 44000 ] || { hma_message '配置过长' 'The configuration is too large' >&2; exit 1; }
+        case "$encoded" in ''|*[!A-Za-z0-9+/=]*) hma_message '配置编码无效' 'Invalid configuration encoding' >&2; exit 1;; esac
         temp="$STORE/incoming.$$"
         trap 'rm -f "$temp" "$temp.sorted" "$temp.previous" "$temp.affected"' EXIT
         printf '%s' "$encoded" | base64 -d > "$temp"
-        validate "$temp" || { cq_message '包名格式无效或超过 128 项' 'Invalid package names or more than 128 entries' >&2; exit 1; }
+        validate "$temp" || { hma_message '包名格式无效或超过 128 项' 'Invalid package names or more than 128 entries' >&2; exit 1; }
         { head -n 1 "$temp"; tail -n +2 "$temp" | sort -u; } > "$temp.sorted"
         cp "$STORE/config" "$temp.previous"
         previous_enabled=$(head -n 1 "$temp.previous")
@@ -99,5 +99,5 @@ case "${1:-status}" in
             done < "$temp.affected"
         fi
         status ;;
-    *) cq_message '未知操作' 'Unknown operation' >&2; exit 1 ;;
+    *) hma_message '未知操作' 'Unknown operation' >&2; exit 1 ;;
 esac

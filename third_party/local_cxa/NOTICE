@@ -1,9 +1,9 @@
-Local C++ finalization support for UID Filter.
+Local C++ finalization support for HMA++.
 Derived from https://github.com/5ec1cff/local_cxa_atexit_finalize_impl
 Upstream commit: b269136606d6f230089fbf47a0b219f7f2ccef3c
 The upstream repository is licensed under Apache-2.0 (see LICENSE).
 The source file also retains the following Android copyright and license.
-Local modifications by 泷泽: allocation failure handling, DSO matching,
+Local modifications by zeroedx: allocation failure handling, DSO matching,
 LIFO linked registration and safe repeated/reentrant finalization.
 
 /*

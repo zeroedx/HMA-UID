@@ -4,7 +4,7 @@
   const lang = /^zh(?:[-_]|$)/i.test(preferred) ? 'zh' : 'en';
   const messages = {
     zh: {
-      title: 'UID 过滤', refresh: '刷新模块状态', enable: '启用过滤', loading: '正在读取模块状态…',
+      title: 'HMA++', refresh: '刷新模块状态', enable: '启用过滤', loading: '正在读取模块状态…',
       scope: '生效应用', defaults: '加入内置包名', scopeHelp: '仅对下列包名生效，支持添加或移除。',
       inputLabel: '添加应用包名', placeholder: '例如 com.example.app', add: '添加', listLabel: '生效应用列表',
       emptyTitle: '还没有生效应用', emptyHelp: '输入包名，或加入内置包名。', about: '使用说明',
@@ -26,7 +26,7 @@
       applied: '已保存并应用，重新打开所选应用即可。'
     },
     en: {
-      title: 'UID Filter', refresh: 'Refresh module status', enable: 'Enable filtering', loading: 'Reading module status…',
+      title: 'HMA++', refresh: 'Refresh module status', enable: 'Enable filtering', loading: 'Reading module status…',
       scope: 'Target apps', defaults: 'Add defaults', scopeHelp: 'Filtering applies only to the packages listed below. Add or remove packages as needed.',
       inputLabel: 'Add a package name', placeholder: 'e.g. com.example.app', add: 'Add', listLabel: 'Target package list',
       emptyTitle: 'No target apps yet', emptyHelp: 'Enter a package name or add the defaults.', about: 'How to use',
@@ -51,12 +51,12 @@
   const t = (key, values = {}) => (messages[lang][key] ?? messages.en[key] ?? key)
     .replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  document.title = t('title') + ' · 泷泽';
+  document.title = t('title') + ' · zeroedx';
   document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = t(node.dataset.i18n); });
   for (const attribute of ['aria-label', 'title', 'placeholder']) {
     document.querySelectorAll('[data-i18n-' + attribute + ']').forEach(node => {
       node.setAttribute(attribute, t(node.getAttribute('data-i18n-' + attribute)));
     });
   }
-  window.CQUidI18n = { lang, t };
+  window.HmaPlusPlusI18n = { lang, t };
 })();
