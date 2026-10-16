@@ -82,14 +82,14 @@ jobs:
           Assert ($prop -match "(?m)^version=$([regex]::Escape($version))$") "module.prop version is not $version"
           Assert ($prop -match "(?m)^author=zeroedx$") 'module.prop author is not zeroedx'
 
-          $control = Get-Content "$dest/panel/control.sh" -Raw
+          $control = Get-Content "$dest/control.sh" -Raw
           Assert ($control -match 'ID=hma_plus_plus') 'control.sh module id is not hma_plus_plus'
           Assert ($control -match 'STORE=/data/adb/hma_plus_plus') 'control.sh store path is not /data/adb/hma_plus_plus'
 
-          $action = Get-Content "$dest/panel/action.sh" -Raw
+          $action = Get-Content "$dest/action.sh" -Raw
           Assert ($action -match 'ksu://webui\?id=hma_plus_plus') 'action.sh webui id is not hma_plus_plus'
 
-          $appjs = Get-Content "$dest/panel/webroot/app.js" -Raw
+          $appjs = Get-Content "$dest/webroot/app.js" -Raw
           Assert ($appjs -match '/data/adb/modules/hma_plus_plus/control.sh') 'WebUI script path is not the hma_plus_plus module'
 
           # No legacy module id or old brand may survive in any packaged text file.
