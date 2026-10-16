@@ -63,7 +63,7 @@ jobs:
       - name: Verify packaged artifact
         shell: pwsh
         run: |
-          function Assert([bool]$cond, [string]$msg) { if (-not $cond) { throw $msg } }
+          function Assert($cond, [string]$msg) { if (-not $cond) { throw $msg } }
 
           $version = (Select-String -Path 'tools/uid-seccomp-module/build.py' -Pattern "^VERSION = '(.+)'$").Matches.Groups[1].Value
           Assert ($version) 'Could not read VERSION from build.py.'
@@ -71,7 +71,7 @@ jobs:
           $zip = "build/$version/hma-plus-plus-$version.zip"
           Assert (Test-Path $zip) "Missing module package: $zip"
           Assert (Test-Path "$zip.sha256") "Missing checksum: $zip.sha256"
-          Assert ((Get-ChildItem build -Recurse -Filter 'cq-uid-seccomp-*.zip' -ErrorAction SilentlyContinue).Count -eq 0) 'A legacy-named package was produced.'
+          Assert (@(Get-ChildItem build -Recurse -Filter 'cq-uid-seccomp-*.zip' -ErrorAction SilentlyContinue).Count -eq 0) 'A legacy-named package was produced.'
 
           $dest = 'build/verify'
           Expand-Archive -Path $zip -DestinationPath $dest -Force
