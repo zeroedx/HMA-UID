@@ -1,6 +1,6 @@
 # HMA++
 
-作者：zeroedx。当前版本：0.2.7。
+作者：zeroedx。当前版本：0.2.8。
 
 HMA++ 是一个 Zygisk 模块，通过过滤指定应用进程的 `getpriority(PRIO_USER)` 调用，规避“内核已分配 UID 但查询结果不存在”这一检测点。
 
@@ -19,12 +19,12 @@ HMA++ 是一个 Zygisk 模块，通过过滤指定应用进程的 `getpriority(P
 - 架构：arm64（`arm64-v8a`），安装脚本会拒绝非 arm64 设备。
 - 系统：Android 13 及以上（API 33+）。
 - 提供程序：Zygisk API 5；配合 KernelSU、Magisk 等支持 Zygisk 的模块管理器使用。
-- 升级方式：本版本更换了模块 ID，**不支持与旧版共存**。安装 HMA++ 0.2.7 前，请先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6，不要同时保留新旧版本。
+- 升级方式：0.2.8 与 0.2.7 使用相同模块 ID（`hma_plus_plus`），可直接覆盖升级，无需卸载。仅当从旧版 HMA-UIDfake 0.2.6（模块 ID `cq_uid_seccomp`）升级时，才需要先在 Root 模块管理器中卸载旧版，不要同时保留新旧版本。
 
 ## 安装
 
-1. **先在 Root 模块管理器中卸载旧版 HMA-UIDfake 0.2.6**（若已安装），确认旧模块已从列表中移除。
-2. 下载 `hma-plus-plus-0.2.7.zip`（或对应版本）及其 `.zip.sha256` 校验文件。
+1. 若安装的是旧版 HMA-UIDfake 0.2.6，**先在 Root 模块管理器中卸载它**，确认旧模块已从列表中移除；从 0.2.7 升级则跳过此步。
+2. 下载 `hma-plus-plus-0.2.8.zip`（或对应版本）及其 `.zip.sha256` 校验文件。
 3. 在支持 Zygisk 的模块管理器中安装该 ZIP。
 4. 重启设备。
 5. 打开模块 WebUI，启用过滤并添加需要生效的包名，保存并应用。
@@ -52,8 +52,8 @@ python tools/uid-seccomp-module/build.py --module-only
 
 输出文件：
 
-- `build/0.2.7/hma-plus-plus-0.2.7.zip`
-- `build/0.2.7/hma-plus-plus-0.2.7.zip.sha256`
+- `build/0.2.8/hma-plus-plus-0.2.8.zip`
+- `build/0.2.8/hma-plus-plus-0.2.8.zip.sha256`
 
 可用 `--output <目录>` 指定输出目录，或用 `--config <文件>` 指定默认配置。省略 `--module-only` 同样只构建模块。
 
@@ -69,18 +69,23 @@ sh tools/uid-seccomp-module/tests/run_tests.sh
 
 ## 版本记录
 
-- 0.2.7：模块更名为 HMA++，作者 zeroedx；模块 ID 更换为 `hma_plus_plus`（旧版为 `cq_uid_seccomp`），**安装前需先卸载旧版 HMA-UIDfake 0.2.6，新旧版本不可共存**；合并审计修复：seccomp 合并改为预算失败即放弃、Provider 回调指针生命周期加固、版本与 Release 标签来源统一。
+- 0.2.8：同步上游 UID 过滤 0.2.8 修复。新增伴随进程（companion）与 seccomp 用户态通知路径：过滤器安装阶段完成通知连接与句柄交付，修复应用初始化阶段通知连接提前关闭、子进程规则继承未生效的问题；保留 HMA++ 自身的严格合并（预算不符即放弃，绝不放大或削弱系统策略）与 Provider 回调指针生命周期加固。
+- 0.2.7：模块更名为 HMA++，作者 zeroedx；模块 ID 更换为 `hma_plus_plus`（旧版为 `cq_uid_seccomp`），**从旧版 HMA-UIDfake 0.2.6 安装前需先卸载**；合并审计修复：seccomp 合并改为预算失败即放弃、Provider 回调指针生命周期加固、版本与 Release 标签来源统一。
 - 0.2.6：析构回调改为模块内部登记和清理，避免在 libc 的退出回调表中留下登记痕迹；发布 SO 移除 `atexit` 符号字符串，仅导出 Zygisk 入口。
 - 0.2.5：在支持的平台策略上，保持合并前的 seccomp 指令预算，修复应用可安装过滤规则的额度差异。
 - 0.2.4：合并系统 seccomp 策略时保持原有的 `NoNewPrivs` 状态和过滤器数量，移除模块启动日志。
 
 ## 源码
 
-- `tools/uid-seccomp-module/module.cpp`、`filter.h`、`policy.h`：原生模块。
+- `tools/uid-seccomp-module/module.cpp`、`filter.h`、`policy.h`、`broker.cpp`、`notification.h`、`fork_events.h`：原生模块。
 - `tools/uid-seccomp-module/panel/`：安装、配置脚本及 WebUI 资源。
 - `tools/uid-seccomp-module/build.py`：编译与 ZIP 打包。
 - `tools/uid-seccomp-module/tests/`：主机侧回归测试。
 - `third_party/zygisk/`：原始头文件、许可声明和来源校验信息。
 - `third_party/local_cxa/`：本地析构回调实现，改编自 [5ec1cff/local_cxa_atexit_finalize_impl](https://github.com/5ec1cff/local_cxa_atexit_finalize_impl)。
+
+## 致谢
+
+- `broker.cpp`、`notification.h`、`fork_events.h` 及 0.2.8 的伴随进程 / 用户态通知修复移植自 [longze777/UID-](https://github.com/longze777/UID-)（作者 longze777，Apache-2.0），已按 HMA++ 的模块 ID、品牌与安全约束适配。各文件顶部保留来源与作者声明。
 
 项目沿用 [Apache-2.0 许可证](LICENSE)；第三方代码保留其原始许可声明，本地析构实现的许可和署名同时收录在安装包的 `legal/` 目录。

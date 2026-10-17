@@ -50,9 +50,12 @@ inline std::vector<sock_filter> make_rule(uint32_t self, const std::vector<uint3
 // has an unfamiliar shape, or the merge cannot preserve the budget, this fails
 // and the caller must leave the platform policy untouched. We never install a
 // growing filter and never weaken an existing policy just to apply a rule.
-inline bool merge(const sock_fprog& platform, uint32_t self, std::vector<sock_filter>& output) {
+//
+// merge_rule takes a pre-built rule so a caller (the user-notification path)
+// can substitute its own action leaves without a second entry point.
+inline bool merge_rule(const sock_fprog& platform, uint32_t self,
+                       const std::vector<sock_filter>& rule, std::vector<sock_filter>& output) {
     if (!platform.filter || !platform.len || self % 100000 < 10000 || self % 100000 > 19999) return false;
-    const auto rule = make_rule(self, {}, true);
     if (platform.len > BPF_MAXINSNS - rule.size()) return false;
     bool has_allow = false;
     for (size_t i = 0; i < platform.len; ++i) {
@@ -64,5 +67,9 @@ inline bool merge(const sock_fprog& platform, uint32_t self, std::vector<sock_fi
     }
     if (!has_allow) return false;
     return detail::merge_with_budget(platform, rule, output);
+}
+
+inline bool merge(const sock_fprog& platform, uint32_t self, std::vector<sock_filter>& output) {
+    return merge_rule(platform, self, make_rule(self, {}, true), output);
 }
 }

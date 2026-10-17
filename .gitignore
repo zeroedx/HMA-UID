@@ -26,6 +26,9 @@
 /tools/uid-seccomp-module/*
 !/tools/uid-seccomp-module/build.py
 !/tools/uid-seccomp-module/module.cpp
+!/tools/uid-seccomp-module/broker.cpp
+!/tools/uid-seccomp-module/notification.h
+!/tools/uid-seccomp-module/fork_events.h
 !/tools/uid-seccomp-module/filter.h
 !/tools/uid-seccomp-module/policy.h
 !/tools/uid-seccomp-module/exports.map
