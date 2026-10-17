@@ -28,9 +28,17 @@ if [ -x "$BUILD/filter_test" ]; then
 fi
 
 echo
+echo "== C++ notification tests =="
+"$CXX" -std=c++17 -O1 -Wall -Wextra -Werror -pthread -I"$MODULE" -I"$HERE" \
+    "$HERE/notification_test.cpp" -o "$BUILD/notification_test" || status=1
+if [ -x "$BUILD/notification_test" ]; then
+    "$BUILD/notification_test" || status=1
+fi
+
+echo
 echo "== C++ module lifecycle tests =="
 "$CXX" -std=c++17 -O1 -Wall -Wextra -rdynamic -I"$HERE/stubs" -I"$ROOT/third_party/zygisk" \
-    -I"$MODULE" -I"$HERE" "$HERE/module_lifecycle_test.cpp" "$MODULE/module.cpp" \
+    -I"$MODULE" -I"$HERE" "$HERE/module_lifecycle_test.cpp" "$MODULE/module.cpp" "$MODULE/broker.cpp" \
     -o "$BUILD/module_lifecycle_test" -ldl || status=1
 if [ -x "$BUILD/module_lifecycle_test" ]; then
     for scenario in clean no_backup chained commit_fail; do
